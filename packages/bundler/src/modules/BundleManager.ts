@@ -124,6 +124,11 @@ export class BundleManager {
       } = parsedError.args
       const userOp = userOps[opIndex]
       const reasonStr: string = reason.toString()
+      if (reasonStr.startsWith('AA1') || reasonStr.startsWith('AA2')) {
+        // UserOp crashed this bundle, but it's not the paymaster's fault.
+        // its probably an attack by deployer (and/or account) on this paymaster.
+        this.reputationManager.updateSeenStatus(getAddr(userOp.paymasterAndData), true)
+      }
       if (reasonStr.startsWith('AA3')) {
         this.reputationManager.crashedHandleOps(getAddr(userOp.paymasterAndData))
       } else if (reasonStr.startsWith('AA2')) {
@@ -194,6 +199,22 @@ export class BundleManager {
         validationResult = await this.validationManager.validateUserOp(entry.userOp, entry.referencedContracts, false)
       } catch (e: any) {
         debug('failed 2nd validation:', e.message)
+
+        let parsedError: ErrorDescription
+        try {
+          parsedError = this.entryPoint.interface.parseError((e.data?.data ?? e.data))
+        } catch (e1) {
+          this.checkFatal(e)
+          console.warn('2nd validation reverts, but non-FailedOp error', e)
+          continue
+        }
+        const reasonStr: string = parsedError.args.reason.toString()
+        if (reasonStr.startsWith('AA1') || reasonStr.startsWith('AA2')) {
+          // UserOp failed 2nd validation, but it's not the paymaster's fault.
+          // it's probably an attack by deployer (and/or account) on this paymaster.
+          this.reputationManager.updateSeenStatus(getAddr(entry.userOp.paymasterAndData), true)
+        }
+
         // failed validation. don't try anymore
         this.mempoolManager.removeUserOp(entry.userOp)
         continue

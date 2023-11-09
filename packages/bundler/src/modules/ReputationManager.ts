@@ -104,14 +104,20 @@ export class ReputationManager {
   /**
    * address seen in the mempool triggered by the
    * @param addr
+   * @param reverse - true to reverse the operation ("unsee" the given entry)
    */
-  updateSeenStatus (addr?: string): void {
+  updateSeenStatus (addr?: string, reverse = false): void {
     if (addr == null) {
       return
     }
     const entry = this._getOrCreate(addr)
-    entry.opsSeen++
-    debug('after seen++', addr, entry)
+    if (reverse) {
+      entry.opsSeen--
+      debug('after reverse seen', addr, entry)
+    } else {
+      entry.opsSeen++
+      debug('after seen++', addr, entry)
+    }
   }
 
   /**
