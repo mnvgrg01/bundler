@@ -144,19 +144,24 @@ export class UserOpMethodHandler {
 
     // todo: checks the existence of parameters, but since we hexlify the inputs, it fails to validate
     await this._validateParameters(deepHexlify(userOp), entryPointInput)
-    // todo: validation manager duplicate?
-    // ethers.js does not know about state overrides
-    const errorResult = await this.provider.send('eth_call', [
+    const callParams: any[] = [
       {
         to: this.entryPoint.address,
         data: this.entryPoint.interface.encodeFunctionData('simulateValidation', [userOp])
       },
-      'latest',
-      stateOverride
-    ])
+      'latest'
+    ]
+    if (stateOverride != null) {
+      callParams.push(stateOverride)
+    }
+    // todo: validation manager duplicate?
+    // ethers.js does not know about state overrides
+    const errorResult = await this.provider.send('eth_call', callParams)
       .catch(e => e)
       .then(e => {
-        e.decodedRevertReason = decodeErrorReason(e.data)
+        if (e.data != null) {
+          e.decodedRevertReason = decodeErrorReason(e.data)
+        }
         return e
       })
     // const errorResult = await this.entryPoint.callStatic.simulateValidation(userOp).catch(e => e)
@@ -178,17 +183,20 @@ export class UserOpMethodHandler {
       validUntil
     } = returnInfo
 
+    const sendParams: any[] = [
+      {
+        from: this.entryPoint.address,
+        to: userOp.sender,
+        data: userOp.callData
+      },
+      'latest'
+    ]
+    if (stateOverride != null) {
+      sendParams.push(stateOverride)
+    }
     // ethers.js does not know about state overrides
     const callGasLimit = await this.provider.send('eth_estimateGas',
-      [
-        {
-          from: this.entryPoint.address,
-          to: userOp.sender,
-          data: userOp.callData
-        },
-        'latest',
-        stateOverride
-      ]
+      sendParams
     ).then(b => parseInt(b)).catch(err => {
       const message = err.message.match(/reason="(.*?)"/)?.at(1) ?? 'execution reverted'
       throw new RpcError(message, ValidationErrors.UserOperationReverted)
