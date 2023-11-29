@@ -1,5 +1,5 @@
 import { BigNumber, BigNumberish, Signer } from 'ethers'
-import { JsonRpcProvider, Log, Provider } from '@ethersproject/providers'
+import { JsonRpcProvider, Log } from '@ethersproject/providers'
 
 import { BundlerConfig } from './BundlerConfig'
 import { resolveProperties } from 'ethers/lib/utils'
@@ -11,6 +11,7 @@ import {
   RpcError,
   tostr,
   getAddr,
+  decodeErrorReason,
   ValidationErrors
 } from '@account-abstraction/utils'
 import { UserOperationStruct, EntryPoint } from '@account-abstraction/contracts'
@@ -148,19 +149,28 @@ export class UserOpMethodHandler {
     const errorResult = await this.provider.send('eth_call', [
       {
         to: this.entryPoint.address,
-        data: this.entryPoint.interface.encodeFunctionData('simulateValidation', userOp)
-      }
-    ]).catch(e => e)
+        data: this.entryPoint.interface.encodeFunctionData('simulateValidation', [userOp])
+      },
+      'latest'
+    ])
+      .catch(e => e)
+      .then(e => {
+        e.decodedRevertReason = decodeErrorReason(e.data)
+        return e
+      })
     // const errorResult = await this.entryPoint.callStatic.simulateValidation(userOp).catch(e => e)
-    if (errorResult.errorName === 'FailedOp') {
-      throw new RpcError(errorResult.errorArgs.at(-1), ValidationErrors.SimulateValidation)
+    if (errorResult.decodedRevertReason?.message?.includes('FailedOp') === true) {
+      throw new RpcError(errorResult.decodedRevertReason.message, ValidationErrors.SimulateValidation)
     }
+
     // todo throw valid rpc error
-    if (errorResult.errorName !== 'ValidationResult') {
+    // todo 2: this is temporary as ValidationResult is a struct in EntryPoint 0.7
+    // if (errorResult.errorName !== 'ValidationResult') {
+    if (errorResult.decodedRevertReason.returnInfo == null) {
       throw errorResult
     }
 
-    const { returnInfo } = errorResult.errorArgs
+    const { returnInfo } = errorResult.decodedRevertReason
     let {
       preOpGas,
       validAfter,
@@ -168,7 +178,8 @@ export class UserOpMethodHandler {
     } = returnInfo
 
     // ethers.js does not know about state overrides
-    const callGasLimit = await this.provider.send('eth_estimateGas', [
+    const callGasLimit = await this.provider.send('eth_estimateGas',
+      [
         {
           from: this.entryPoint.address,
           to: userOp.sender,
