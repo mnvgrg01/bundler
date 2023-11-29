@@ -132,7 +132,12 @@ describe('UserOpMethodHandler', function () {
       expect(ret.callGasLimit).to.be.closeTo(25000, 10000)
     })
 
-    it('estimateUserOperationGas should estimate using state overrides', async () => {
+    it('estimateUserOperationGas should estimate using state overrides', async function () {
+      const ver: string = await (provider as any).send('web3_clientVersion')
+      if (ver.match('go1') == null) {
+        console.warn('\t==WARNING: test requires state override support on Geth (go-ethereum) node available after 1.12.1; ver=' + ver)
+        this.skip()
+      }
       const op = await smartAccountAPI.createSignedUserOp({
         target,
         data: '0xdeadface'

@@ -167,7 +167,7 @@ export class UserOpMethodHandler {
     // todo throw valid rpc error
     // todo 2: this is temporary as ValidationResult is a struct in EntryPoint 0.7
     // if (errorResult.errorName !== 'ValidationResult') {
-    if (errorResult.decodedRevertReason.returnInfo == null) {
+    if (errorResult.decodedRevertReason?.returnInfo == null) {
       throw errorResult
     }
 
