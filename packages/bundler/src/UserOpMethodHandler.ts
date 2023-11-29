@@ -26,23 +26,23 @@ export interface StateOverride {
   /**
    * Fake balance to set for the account before executing the call.
    */
-  balance: BigNumberish
+  balance?: BigNumberish
   /**
    * Fake nonce to set for the account before executing the call.
    */
-  nonce: BigNumberish
+  nonce?: BigNumberish
   /**
    * Fake EVM bytecode to inject into the account before executing the call.
    */
-  code: string
+  code?: string
   /**
    * Fake key-value mapping to override all slots in the account storage before executing the call.
    */
-  state: Object
+  state?: Object
   /**
    * Fake key-value mapping to override individual slots in the account storage before executing the call.
    */
-  stateDiff: Object
+  stateDiff?: Object
 }
 
 /**
@@ -151,7 +151,8 @@ export class UserOpMethodHandler {
         to: this.entryPoint.address,
         data: this.entryPoint.interface.encodeFunctionData('simulateValidation', [userOp])
       },
-      'latest'
+      'latest',
+      stateOverride
     ])
       .catch(e => e)
       .then(e => {
@@ -185,6 +186,7 @@ export class UserOpMethodHandler {
           to: userOp.sender,
           data: userOp.callData
         },
+        'latest',
         stateOverride
       ]
     ).then(b => parseInt(b)).catch(err => {
