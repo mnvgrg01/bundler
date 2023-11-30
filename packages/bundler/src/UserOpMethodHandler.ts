@@ -18,32 +18,9 @@ import { UserOperationStruct, EntryPoint } from '@account-abstraction/contracts'
 import { UserOperationEventEvent } from '@account-abstraction/contracts/dist/types/EntryPoint'
 import { calcPreVerificationGas } from '@account-abstraction/sdk'
 import { ExecutionManager } from './modules/ExecutionManager'
-import { UserOperationByHashResponse, UserOperationReceipt } from './RpcTypes'
+import { StateOverride, UserOperationByHashResponse, UserOperationReceipt } from './RpcTypes'
 
 const HEX_REGEX = /^0x[a-fA-F\d]*$/i
-
-export interface StateOverride {
-  /**
-   * Fake balance to set for the account before executing the call.
-   */
-  balance?: BigNumberish
-  /**
-   * Fake nonce to set for the account before executing the call.
-   */
-  nonce?: BigNumberish
-  /**
-   * Fake EVM bytecode to inject into the account before executing the call.
-   */
-  code?: string
-  /**
-   * Fake key-value mapping to override all slots in the account storage before executing the call.
-   */
-  state?: Object
-  /**
-   * Fake key-value mapping to override individual slots in the account storage before executing the call.
-   */
-  stateDiff?: Object
-}
 
 /**
  * return value from estimateUserOpGas
